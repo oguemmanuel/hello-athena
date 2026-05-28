@@ -14,21 +14,35 @@ async function syncDatabase() {
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rawData = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
-    // Parse Excel data (skip header)
-    const excelProducts = rawData.slice(1).filter(row => {
-      return row.__EMPTY && row.__EMPTY.toString().trim() !== '';
-    }).map(row => ({
-      name: (row.__EMPTY || '').toString().trim(),
-      stock: parseInt(row.__EMPTY_1) || 0,
-      price: parseFloat(row.__EMPTY_2) || 0,
-      code: (row.__EMPTY_3 || '').toString().trim()
-    })).filter(p => p.code && p.name);
+    // Parse Excel data — track category from first column
+    const firstColKey = Object.keys(rawData[0])[0]; // e.g. "ATHENA WOMEN"
+    let currentCategory = firstColKey; // first section name comes from cell A1
+
+    const excelProducts = [];
+    for (const row of rawData.slice(1)) {
+      const firstColVal = (row[firstColKey] || '').toString().trim();
+      // If first column has a non-numeric, non-date, non-label string → new category
+      if (firstColVal && isNaN(Number(firstColVal)) && firstColVal !== 'NEW' && firstColVal !== 'DATE') {
+        currentCategory = firstColVal;
+      }
+      const name = (row.__EMPTY || '').toString().trim();
+      const code = (row.__EMPTY_3 || '').toString().trim();
+      if (name && code) {
+        excelProducts.push({
+          name,
+          stock: parseInt(row.__EMPTY_1) || 0,
+          price: parseFloat(row.__EMPTY_2) || 0,
+          code,
+          category: currentCategory,
+        });
+      }
+    }
 
     console.log(`Found ${excelProducts.length} products in Excel file\n`);
 
     // Get existing products from database
     const dbProducts = await prisma.product.findMany({
-      select: { id: true, code: true, name: true, price: true, stock: true }
+      select: { id: true, code: true, name: true, price: true, stock: true, category: true }
     });
     console.log(`Found ${dbProducts.length} products in database\n`);
 
@@ -43,7 +57,8 @@ async function syncDatabase() {
         const excelProd = excelMap.get(dbProd.code);
         if (dbProd.price !== excelProd.price ||
             dbProd.stock !== excelProd.stock ||
-            dbProd.name !== excelProd.name) {
+            dbProd.name !== excelProd.name ||
+            dbProd.category !== excelProd.category) {
           productsToUpdate.push({ id: dbProd.id, ...excelProd });
         }
       }
@@ -56,7 +71,8 @@ async function syncDatabase() {
           name: prod.name,
           price: prod.price,
           stock: prod.stock,
-          code: prod.code
+          code: prod.code,
+          category: prod.category,
         }
       });
       updated++;
