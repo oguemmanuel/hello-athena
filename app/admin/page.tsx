@@ -6,62 +6,55 @@ export default function AdminPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+      <div className="page-header">
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#C9A84C', margin: 0 }}>Admin Dashboard</h1>
-          <p style={{ color: '#666', fontSize: 14, margin: '8px 0 0' }}>Manage your store</p>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-subtitle">Welcome back — manage your store below</p>
         </div>
-        <button
-          onClick={() => {
-            localStorage.removeItem('adminAuth')
-            router.push('/pos')
-          }}
-          style={{
-            padding: '10px 16px',
-            backgroundColor: '#ef4444',
-            border: 'none',
-            color: 'white',
-            borderRadius: 8,
-            cursor: 'pointer',
-            fontWeight: 600,
-          }}
-        >
-          ← Back to POS
-        </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
         {[
-          { href: '/admin/products', icon: '👗', label: 'Products', desc: 'Add, edit, delete items' },
-          { href: '/admin/sales', icon: '💰', label: 'Sales', desc: 'View all transactions' },
-          { href: '/admin/reports', icon: '📊', label: 'Reports', desc: 'Monthly analytics' },
+          { href: '/admin/products', icon: '◫', label: 'Products', desc: 'Add, edit & manage inventory', color: '#C9A84C' },
+          { href: '/admin/sales', icon: '◈', label: 'Sales History', desc: 'View all transactions', color: '#60a5fa' },
+          { href: '/admin/reports', icon: '◉', label: 'Reports', desc: 'Monthly analytics & insights', color: '#4ade80' },
         ].map(item => (
           <a
             key={item.href}
             href={item.href}
             style={{
-              backgroundColor: '#1A1A1A',
-              border: '1px solid #2A2A2A',
-              borderRadius: 12,
-              padding: 24,
+              backgroundColor: '#141414',
+              border: '1px solid #222',
+              borderRadius: 14,
+              padding: '24px 22px',
               textDecoration: 'none',
               cursor: 'pointer',
-              transition: 'all 0.15s',
+              transition: 'all 0.2s',
+              display: 'block',
             }}
             onMouseEnter={e => {
               const el = e.currentTarget as HTMLElement
-              el.style.borderColor = '#C9A84C'
-              el.style.boxShadow = '0 4px 12px rgba(201, 168, 76, 0.1)'
+              el.style.borderColor = item.color + '55'
+              el.style.backgroundColor = '#181818'
+              el.style.transform = 'translateY(-2px)'
+              el.style.boxShadow = `0 8px 24px ${item.color}15`
             }}
             onMouseLeave={e => {
               const el = e.currentTarget as HTMLElement
-              el.style.borderColor = '#2A2A2A'
+              el.style.borderColor = '#222'
+              el.style.backgroundColor = '#141414'
+              el.style.transform = 'translateY(0)'
               el.style.boxShadow = 'none'
             }}
           >
-            <div style={{ fontSize: 32, marginBottom: 12 }}>{item.icon}</div>
-            <div style={{ fontSize: 18, fontWeight: 600, color: '#C9A84C', marginBottom: 4 }}>{item.label}</div>
-            <div style={{ fontSize: 13, color: '#888' }}>{item.desc}</div>
+            <div style={{
+              width: 44, height: 44, borderRadius: 10,
+              backgroundColor: item.color + '18',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 20, marginBottom: 16, color: item.color,
+            }}>{item.icon}</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: '#F0F0F0', marginBottom: 6 }}>{item.label}</div>
+            <div style={{ fontSize: 12.5, color: '#555', lineHeight: 1.4 }}>{item.desc}</div>
           </a>
         ))}
       </div>
