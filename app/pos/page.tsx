@@ -164,16 +164,22 @@ export default function POSPage() {
               }}
             >
               {/* Category + Code */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <span style={{ fontSize: 10, color: '#555', textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 500 }}>{p.category}</span>
-                {p.code && <span style={{ fontSize: 9, color: '#3A3A3A', fontFamily: 'monospace' }}>{p.code}</span>}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
+                <span style={{
+                  fontSize: 10, color: '#C9A84C', textTransform: 'uppercase',
+                  letterSpacing: 0.8, fontWeight: 600, opacity: 0.8,
+                }}>{p.category}</span>
+                {p.code && <span style={{
+                  fontSize: 10, color: '#888', fontFamily: 'monospace',
+                  backgroundColor: '#1E1E1E', padding: '1px 6px', borderRadius: 4,
+                }}>{p.code}</span>}
               </div>
 
               {/* Name */}
               <div style={{ fontWeight: 600, fontSize: 13, color: '#E0E0E0', marginBottom: 4, lineHeight: 1.3 }}>{p.name}</div>
 
               {/* Size */}
-              {p.size && <div style={{ fontSize: 11, color: '#555', marginBottom: 6 }}>Size: {p.size}</div>}
+              {p.size && <div style={{ fontSize: 11, color: '#777', marginBottom: 6 }}>Size: {p.size}</div>}
 
               {/* Price + Stock */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
