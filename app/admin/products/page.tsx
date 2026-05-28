@@ -185,40 +185,46 @@ export default function ProductsPage() {
       )}
 
       {/* Table */}
-      <div style={{ backgroundColor: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: 12, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div style={{ backgroundColor: '#141414', border: '1px solid #222', borderRadius: 12, overflow: 'hidden' }}>
+        <table className="data-table">
           <thead>
-            <tr style={{ borderBottom: '1px solid #2A2A2A', backgroundColor: '#111' }}>
+            <tr>
               {['Product', 'Code', 'Category', 'Price', 'Stock', 'Size', 'Actions'].map(h => (
-                <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, color: '#C9A84C', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>{h}</th>
+                <th key={h}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {filtered.map((p, idx) => (
-              <tr key={p.id} style={{ borderBottom: '1px solid #1f1f1f', backgroundColor: idx % 2 === 0 ? 'transparent' : '#0A0A0A' }}>
-                <td style={{ padding: '12px 16px', fontWeight: 500 }}>{p.name}</td>
-                <td style={{ padding: '12px 16px', color: '#888', fontSize: 13, fontFamily: 'monospace' }}>{p.code || '—'}</td>
-                <td style={{ padding: '12px 16px', color: '#888', fontSize: 13 }}>{p.category}</td>
-                <td style={{ padding: '12px 16px', color: '#C9A84C', fontWeight: 600 }}>GHS {p.price.toFixed(2)}</td>
-                <td style={{ padding: '12px 16px' }}>
+            {filtered.map((p) => (
+              <tr key={p.id}>
+                <td style={{ fontWeight: 500, color: '#E0E0E0' }}>{p.name}</td>
+                <td>
+                  {p.code
+                    ? <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#aaa', backgroundColor: '#1E1E1E', padding: '2px 7px', borderRadius: 4 }}>{p.code}</span>
+                    : <span style={{ color: '#333' }}>—</span>}
+                </td>
+                <td>
+                  <span style={{ fontSize: 12, color: '#C9A84C', fontWeight: 600, opacity: 0.85 }}>{p.category}</span>
+                </td>
+                <td style={{ color: '#C9A84C', fontWeight: 600 }}>GHS {p.price.toFixed(2)}</td>
+                <td>
                   <span style={{
                     padding: '2px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-                    backgroundColor: p.stock <= 5 ? '#7f1d1d44' : '#14532d44',
-                    color: p.stock <= 5 ? '#f87171' : '#4ade80'
+                    backgroundColor: p.stock === 0 ? '#7f1d1d33' : p.stock <= 5 ? '#78350f33' : '#14532d22',
+                    color: p.stock === 0 ? '#f87171' : p.stock <= 5 ? '#fbbf24' : '#4ade80',
                   }}>
-                    {p.stock <= 5 && '⚠ '}{p.stock}
+                    {p.stock === 0 ? 'Out' : p.stock <= 5 ? `⚠ ${p.stock}` : p.stock}
                   </span>
                 </td>
-                <td style={{ padding: '12px 16px', color: '#888', fontSize: 13 }}>{p.size || '—'}</td>
-                <td style={{ padding: '12px 16px' }}>
-                  <button onClick={() => handleEdit(p)} style={{ marginRight: 8, background: 'none', border: '1px solid #C9A84C', color: '#C9A84C', padding: '4px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>Edit</button>
-                  <button onClick={() => setDeleteModal(p.id)} style={{ background: 'none', border: '1px solid #ef4444', color: '#ef4444', padding: '4px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>Delete</button>
+                <td style={{ color: '#777', fontSize: 13 }}>{p.size || <span style={{ color: '#333' }}>—</span>}</td>
+                <td>
+                  <button onClick={() => handleEdit(p)} style={{ marginRight: 8, background: 'none', border: '1px solid #C9A84C44', color: '#C9A84C', padding: '4px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>Edit</button>
+                  <button onClick={() => setDeleteModal(p.id)} style={{ background: 'none', border: '1px solid #ef444444', color: '#ef4444', padding: '4px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>Delete</button>
                 </td>
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: '#555' }}>
+              <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: '#444' }}>
                 {search ? 'No products found. Try a different search.' : 'No products yet. Add your first product above.'}
               </td></tr>
             )}
