@@ -66,21 +66,27 @@ async function syncDatabase() {
 
     // 2. Add missing products
     let added = 0;
+    let skipped = 0;
     for (const excelProd of excelProducts) {
       if (!dbMap.has(excelProd.code)) {
-        await prisma.product.create({
-          data: {
-            name: excelProd.name,
-            category: 'General',
-            price: excelProd.price,
-            stock: excelProd.stock,
-            code: excelProd.code
-          }
-        });
-        added++;
-        if (added % 100 === 0) process.stdout.write(`✓ Added ${added}...\r`);
+        try {
+          await prisma.product.create({
+            data: {
+              name: excelProd.name,
+              category: 'General',
+              price: excelProd.price,
+              stock: excelProd.stock,
+              code: excelProd.code
+            }
+          });
+          added++;
+          if (added % 100 === 0) process.stdout.write(`✓ Added ${added}...\r`);
+        } catch (err) {
+          skipped++;
+        }
       }
     }
+    if (skipped > 0) console.log(`⚠ Skipped ${skipped} products with duplicate codes`);
     console.log(`✓ Added ${added} new products from Excel\n`);
 
     // 3. Remove products not in Excel (including null/empty codes)
