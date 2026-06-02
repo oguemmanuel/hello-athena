@@ -34,6 +34,7 @@ async function syncDatabase() {
           price: parseFloat(row.__EMPTY_2) || 0,
           code,
           category: currentCategory,
+          sortOrder: excelProducts.length,
         });
       }
     }
@@ -42,7 +43,7 @@ async function syncDatabase() {
 
     // Get existing products from database
     const dbProducts = await prisma.product.findMany({
-      select: { id: true, code: true, name: true, price: true, stock: true, category: true }
+      select: { id: true, code: true, name: true, price: true, stock: true, category: true, sortOrder: true }
     });
     console.log(`Found ${dbProducts.length} products in database\n`);
 
@@ -58,7 +59,8 @@ async function syncDatabase() {
         if (dbProd.price !== excelProd.price ||
             dbProd.stock !== excelProd.stock ||
             dbProd.name !== excelProd.name ||
-            dbProd.category !== excelProd.category) {
+            dbProd.category !== excelProd.category ||
+            dbProd.sortOrder !== excelProd.sortOrder) {
           productsToUpdate.push({ id: dbProd.id, ...excelProd });
         }
       }
@@ -73,6 +75,7 @@ async function syncDatabase() {
           stock: prod.stock,
           code: prod.code,
           category: prod.category,
+          sortOrder: prod.sortOrder,
         }
       });
       updated++;
@@ -89,10 +92,11 @@ async function syncDatabase() {
           await prisma.product.create({
             data: {
               name: excelProd.name,
-              category: 'General',
+              category: excelProd.category,
               price: excelProd.price,
               stock: excelProd.stock,
-              code: excelProd.code
+              code: excelProd.code,
+              sortOrder: excelProd.sortOrder,
             }
           });
           added++;
@@ -126,6 +130,22 @@ async function syncDatabase() {
       if (deleted % 100 === 0) process.stdout.write(`✓ Deleted ${deleted}...\r`);
     }
     console.log(`✓ Deleted ${deleted} products not found in Excel\n`);
+
+    // 4. Force-update sortOrder for all products to match Excel order
+    console.log('Updating sort order...');
+    let sortUpdated = 0;
+    for (const excelProd of excelProducts) {
+      const dbProd = dbMap.get(excelProd.code);
+      if (dbProd) {
+        await prisma.product.update({
+          where: { id: dbProd.id },
+          data: { sortOrder: excelProd.sortOrder }
+        });
+        sortUpdated++;
+        if (sortUpdated % 100 === 0) process.stdout.write(`✓ Sort order ${sortUpdated}...\r`);
+      }
+    }
+    console.log(`✓ Sort order updated for ${sortUpdated} products\n`);
 
     // Verify final state
     const finalCount = await prisma.product.count();
