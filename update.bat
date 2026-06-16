@@ -15,7 +15,16 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo [2/3] Rebuilding app...
+echo [2/3] Syncing new products to database...
+node scripts/sync-from-excel.js
+if %errorlevel% neq 0 (
+  echo ERROR: Sync failed.
+  pause
+  exit /b 1
+)
+
+echo.
+echo [3/4] Rebuilding app...
 set NODE_OPTIONS=--max-old-space-size=4096
 call npm run build
 if %errorlevel% neq 0 (
@@ -25,7 +34,7 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo [3/3] Done!
+echo [4/4] Done!
 echo ================================
 echo  Update complete! Your shop data
 echo  is safe and untouched.
