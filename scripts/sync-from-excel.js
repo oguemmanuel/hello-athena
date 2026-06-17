@@ -74,10 +74,10 @@ async function main() {
       if (existingMap.has(p.code)) {
         const current = existingMap.get(p.code);
         // Only update if name or category actually changed
-        if (current.name !== p.name || current.category !== p.category) {
+        if (current.name !== p.name || current.category !== p.category || current.price !== p.price) {
           await prisma.product.update({
             where: { code: p.code },
-            data: { name: p.name, category: p.category },
+            data: { name: p.name, category: p.category, price: p.price },
           });
           console.log(`  ✏️  Updated [${p.code}] "${current.name}" → "${p.name}"`);
           updated++;
