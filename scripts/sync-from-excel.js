@@ -1,11 +1,10 @@
 /**
  * sync-from-excel.js
  * Safe one-way sync: Excel → DB
- * - Only ADDS products that don't exist yet (matched by code)
- * - Never updates existing products
- * - Never deletes anything
- * - Never touches Sales or SaleItem tables
- * Run this on the shop PC after deploying a new build.
+ * - ADDS products that don't exist yet (matched by code)
+ * - UPDATES name + category for existing products to match Excel
+ * - Runs specific cleanups (duplicate removals) only when safe (no sales)
+ * - Never updates stock, price, or anything on Sales/SaleItem tables
  */
 const XLSX = require('xlsx');
 const { PrismaClient } = require('@prisma/client');
@@ -30,7 +29,6 @@ function parseExcel(filePath) {
   for (let i = 0; i < rows.length; i++) {
     const [col0, name, qty, price, code] = rows[i];
 
-    // Detect category change (col A is a known category name)
     if (col0 && typeof col0 === 'string') {
       const upper = col0.trim().toUpperCase();
       if (KNOWN_CATEGORIES.has(upper) || KNOWN_CATEGORIES.has(col0.trim())) {
@@ -38,13 +36,12 @@ function parseExcel(filePath) {
       }
     }
 
-    // Skip header/label rows
     if (!name || name === 'ITEM DESCRIPTION') continue;
     const nameStr = name.toString().trim();
     if (!nameStr) continue;
 
     const codeStr = code?.toString().trim();
-    if (!codeStr) continue; // skip products without a code
+    if (!codeStr) continue;
 
     products.push({
       name: nameStr,
@@ -59,51 +56,76 @@ function parseExcel(filePath) {
 }
 
 async function main() {
-  const excelPath = './data/stocks.xlsx';
-  const excelProducts = parseExcel(excelPath);
+  const excelProducts = parseExcel('./data/stocks.xlsx');
   console.log(`Excel: ${excelProducts.length} products with codes`);
 
-  // Get all codes already in DB
-  const existing = await prisma.product.findMany({ select: { code: true } });
-  const existingCodes = new Set(existing.map(p => p.code?.toString().trim()));
-  console.log(`DB:    ${existing.length} products currently`);
-
-  // Only products not yet in DB
-  const toAdd = excelProducts.filter(p => !existingCodes.has(p.code));
-  console.log(`New:   ${toAdd.length} products to add\n`);
-
-  if (toAdd.length === 0) {
-    console.log('✅ Already in sync — nothing to add.');
-    return;
-  }
+  const existing = await prisma.product.findMany({ select: { code: true, name: true, category: true } });
+  const existingMap = new Map(existing.map(p => [p.code?.toString().trim(), p]));
+  console.log(`DB:    ${existing.length} products currently\n`);
 
   // Get next sortOrder
   const maxSort = await prisma.product.aggregate({ _max: { sortOrder: true } });
   let sortOrder = (maxSort._max.sortOrder || 0) + 1;
 
-  let added = 0, failed = 0;
-  for (const p of toAdd) {
+  let added = 0, updated = 0, failed = 0;
+
+  for (const p of excelProducts) {
     try {
-      await prisma.product.create({
-        data: {
-          name: p.name,
-          category: p.category,
-          price: p.price,
-          stock: p.stock,
-          code: p.code,
-          sortOrder: sortOrder++,
+      if (existingMap.has(p.code)) {
+        const current = existingMap.get(p.code);
+        // Only update if name or category actually changed
+        if (current.name !== p.name || current.category !== p.category) {
+          await prisma.product.update({
+            where: { code: p.code },
+            data: { name: p.name, category: p.category },
+          });
+          console.log(`  ✏️  Updated [${p.code}] "${current.name}" → "${p.name}"`);
+          updated++;
         }
-      });
-      console.log(`  ✅ Added [${p.code}] ${p.name} (${p.category}) — stock:${p.stock}, price:${p.price}`);
-      added++;
+      } else {
+        await prisma.product.create({
+          data: {
+            name: p.name,
+            category: p.category,
+            price: p.price,
+            stock: p.stock,
+            code: p.code,
+            sortOrder: sortOrder++,
+          }
+        });
+        console.log(`  ✅ Added [${p.code}] ${p.name} (${p.category}) — stock:${p.stock}, price:${p.price}`);
+        added++;
+      }
     } catch (e) {
       console.log(`  ❌ Failed [${p.code}] ${p.name} — ${e.message}`);
       failed++;
     }
   }
 
+  // --- Cleanup: remove known duplicates only if they have no sales ---
+  const toCleanup = [
+    { code: '4237', reason: 'merged into A1028 (MAXI WIDE LEG LEGGINGS/SKINNY WIDELEG)' },
+    { code: 'NA 001', reason: 'duplicate of NA0010 (SILVER MOON LONG DRESS)' },
+  ];
+
+  console.log('\n--- Cleanup ---');
+  for (const { code, reason } of toCleanup) {
+    const product = await prisma.product.findUnique({ where: { code } });
+    if (!product) {
+      console.log(`  ⏭️  [${code}] not found — already clean`);
+      continue;
+    }
+    const salesCount = await prisma.saleItem.count({ where: { productId: product.id } });
+    if (salesCount > 0) {
+      console.log(`  ⚠️  [${code}] ${product.name} has ${salesCount} sale(s) — skipping delete`);
+    } else {
+      await prisma.product.delete({ where: { code } });
+      console.log(`  🗑️  Deleted [${code}] ${product.name} — ${reason}`);
+    }
+  }
+
   const finalCount = await prisma.product.count();
-  console.log(`\nDone! ${added} added, ${failed} failed.`);
+  console.log(`\nDone! ${added} added, ${updated} updated, ${failed} failed.`);
   console.log(`DB now has ${finalCount} products. Sales & transactions untouched.`);
 }
 
