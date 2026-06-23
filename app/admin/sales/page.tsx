@@ -33,10 +33,26 @@ const getDayKey = (dateStr: string) => {
 export default function SalesPage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/sales").then(r => r.json()).then(setSales);
   }, []);
+
+  const handleDelete = async (sale: Sale) => {
+    if (!confirm(`Delete transaction ${sale.receiptNumber}?\n\nThis will remove the sale and restore stock for all items. This cannot be undone.`)) return;
+    setDeleting(sale.id);
+    try {
+      const res = await fetch(`/api/sales/${sale.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      setSales(prev => prev.filter(s => s.id !== sale.id));
+      if (expanded === sale.id) setExpanded(null);
+    } catch {
+      alert('Failed to delete transaction. Please try again.');
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   // Group sales by day
   const grouped: { label: string; dayTotal: number; sales: Sale[] }[] = [];
@@ -85,7 +101,7 @@ export default function SalesPage() {
             <table className="data-table">
               <thead>
                 <tr>
-                  {['Receipt #', 'Time', 'Items', 'Payment', 'Total', ''].map(h => <th key={h}>{h}</th>)}
+                  {['Receipt #', 'Time', 'Items', 'Payment', 'Total', '', ''].map((h, i) => <th key={i}>{h}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -102,10 +118,19 @@ export default function SalesPage() {
                       </td>
                       <td style={{ fontWeight: 600, color: '#F0F0F0' }}>GHS {sale.total.toFixed(2)}</td>
                       <td style={{ color: '#444', fontSize: 11 }}>{expanded === sale.id ? '▲' : '▼'}</td>
+                      <td onClick={e => e.stopPropagation()}>
+                        <button
+                          onClick={() => handleDelete(sale)}
+                          disabled={deleting === sale.id}
+                          style={{ background: 'none', border: '1px solid #3a1a1a', borderRadius: 6, color: '#ef4444', cursor: 'pointer', fontSize: 11, padding: '3px 10px', opacity: deleting === sale.id ? 0.5 : 1 }}
+                        >
+                          {deleting === sale.id ? '...' : 'Delete'}
+                        </button>
+                      </td>
                     </tr>
                     {expanded === sale.id && (
                       <tr style={{ backgroundColor: '#0F0F0F' }}>
-                        <td colSpan={6} style={{ padding: '12px 24px' }}>
+                        <td colSpan={7} style={{ padding: '12px 24px' }}>
                           {sale.items.map((item, i) => (
                             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #1A1A1A', fontSize: 13 }}>
                               <span style={{ color: '#aaa' }}>
