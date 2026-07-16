@@ -1,8 +1,13 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { printReceipt } from "@/lib/receipt";
 
 type SaleItem = { quantity: number; price: number; product: { code: any; name: string } };
-type Sale = { id: number; receiptNumber: string; total: number; paymentMethod: string; createdAt: string; items: SaleItem[] };
+type Sale = {
+  id: number; receiptNumber: string; total: number; paymentMethod: string; createdAt: string;
+  voided: boolean; voidedAt: string | null; voidReason: string | null;
+  items: SaleItem[];
+};
 
 const paymentLabel = (m: string) => m === 'card' ? '💳 Card' : m === 'momo' ? '📱 Momo' : '💵 Cash'
 const paymentStyle = (m: string) => ({
@@ -39,6 +44,17 @@ export default function SalesPage() {
     fetch("/api/sales").then(r => r.json()).then(setSales);
   }, []);
 
+  const handleReprint = (sale: Sale) => {
+    printReceipt({
+      receiptNumber: sale.receiptNumber,
+      total: sale.total,
+      paymentMethod: sale.paymentMethod,
+      createdAt: sale.createdAt,
+      voided: sale.voided,
+      items: sale.items.map(i => ({ name: i.product.name, price: i.price, quantity: i.quantity })),
+    });
+  };
+
   const handleDelete = async (sale: Sale) => {
     if (!confirm(`Delete transaction ${sale.receiptNumber}?\n\nThis will remove the sale and restore stock for all items. This cannot be undone.`)) return;
     setDeleting(sale.id);
@@ -65,7 +81,7 @@ export default function SalesPage() {
     }
     const idx = seen.get(key)!;
     grouped[idx].sales.push(sale);
-    grouped[idx].dayTotal += sale.total;
+    if (!sale.voided) grouped[idx].dayTotal += sale.total;
   }
 
   return (
@@ -101,14 +117,21 @@ export default function SalesPage() {
             <table className="data-table">
               <thead>
                 <tr>
-                  {['Receipt #', 'Time', 'Items', 'Payment', 'Total', '', ''].map((h, i) => <th key={i}>{h}</th>)}
+                  {['Receipt #', 'Time', 'Items', 'Payment', 'Total', '', '', ''].map((h, i) => <th key={i}>{h}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {group.sales.map(sale => (
                   <React.Fragment key={sale.id}>
-                    <tr style={{ cursor: 'pointer' }} onClick={() => setExpanded(expanded === sale.id ? null : sale.id)}>
-                      <td style={{ fontFamily: 'monospace', color: '#C9A84C', fontSize: 12 }}>{sale.receiptNumber}</td>
+                    <tr style={{ cursor: 'pointer', opacity: sale.voided ? 0.55 : 1 }} onClick={() => setExpanded(expanded === sale.id ? null : sale.id)}>
+                      <td style={{ fontFamily: 'monospace', color: '#C9A84C', fontSize: 12 }}>
+                        {sale.receiptNumber}
+                        {sale.voided && (
+                          <span style={{ marginLeft: 8, padding: '1px 8px', borderRadius: 20, fontSize: 10, backgroundColor: '#3a1a1a', color: '#ef4444', fontFamily: 'sans-serif' }}>
+                            VOIDED
+                          </span>
+                        )}
+                      </td>
                       <td style={{ color: '#666' }}>{new Date(sale.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
                       <td style={{ color: '#888' }}>{sale.items.reduce((s, i) => s + i.quantity, 0)} items</td>
                       <td>
@@ -118,6 +141,14 @@ export default function SalesPage() {
                       </td>
                       <td style={{ fontWeight: 600, color: '#F0F0F0' }}>GHS {sale.total.toFixed(2)}</td>
                       <td style={{ color: '#444', fontSize: 11 }}>{expanded === sale.id ? '▲' : '▼'}</td>
+                      <td onClick={e => e.stopPropagation()}>
+                        <button
+                          onClick={() => handleReprint(sale)}
+                          style={{ background: 'none', border: '1px solid #2A2A2A', borderRadius: 6, color: '#aaa', cursor: 'pointer', fontSize: 11, padding: '3px 10px' }}
+                        >
+                          🖨 Reprint
+                        </button>
+                      </td>
                       <td onClick={e => e.stopPropagation()}>
                         <button
                           onClick={() => handleDelete(sale)}
@@ -130,7 +161,13 @@ export default function SalesPage() {
                     </tr>
                     {expanded === sale.id && (
                       <tr style={{ backgroundColor: '#0F0F0F' }}>
-                        <td colSpan={7} style={{ padding: '12px 24px' }}>
+                        <td colSpan={8} style={{ padding: '12px 24px' }}>
+                          {sale.voided && (
+                            <div style={{ marginBottom: 10, fontSize: 12, color: '#ef4444' }}>
+                              Voided {sale.voidedAt ? new Date(sale.voidedAt).toLocaleString() : ''}
+                              {sale.voidReason ? ` — reason: ${sale.voidReason}` : ''}
+                            </div>
+                          )}
                           {sale.items.map((item, i) => (
                             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #1A1A1A', fontSize: 13 }}>
                               <span style={{ color: '#aaa' }}>

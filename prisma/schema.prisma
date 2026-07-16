@@ -27,6 +27,9 @@ model Sale {
   total         Float
   paymentMethod String     @default("cash")
   createdAt     DateTime   @default(now())
+  voided        Boolean    @default(false)
+  voidedAt      DateTime?
+  voidReason    String?
   items         SaleItem[]
 }
 
