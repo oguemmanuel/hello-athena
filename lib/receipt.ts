@@ -41,6 +41,8 @@ export function printReceipt(sale: ReceiptData) {
     <div class="row bold" style="font-size:12px"><span>TOTAL</span><span>GHS ${sale.total.toFixed(2)}</span></div>
     <div class="row" style="margin-top:2px;font-size:10px"><span>Payment</span><span>${paymentLabel}</span></div>
     <div class="divider" style="margin:6px 0"></div>
+    <div class="center bold" style="font-size:10px">*** ALL SALES ARE FINAL - NO REFUNDS ***</div>
+    <div class="divider" style="margin:6px 0"></div>
     <div class="center" style="font-size:10px">Thank you for shopping at</div>
     <div class="center bold" style="font-size:11px">Hello Athena!</div>
   `;

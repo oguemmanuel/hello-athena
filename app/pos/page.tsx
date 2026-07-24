@@ -339,6 +339,8 @@ export default function POSPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: 12 }}><span>TOTAL</span><span>GHS {lastSale.total.toFixed(2)}</span></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2, fontSize: 10 }}><span>Payment</span><span>{lastSale.paymentMethod === 'card' ? 'Card' : lastSale.paymentMethod === 'momo' ? 'Momo' : 'Cash'}</span></div>
               <div style={{ borderTop: '1px dashed #000', margin: '6px 0' }} />
+              <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 10 }}>*** ALL SALES ARE FINAL - NO REFUNDS ***</div>
+              <div style={{ borderTop: '1px dashed #000', margin: '6px 0' }} />
               <div style={{ textAlign: 'center', fontSize: 10 }}>Thank you for shopping at</div>
               <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 11 }}>Hello Athena!</div>
             </div>
