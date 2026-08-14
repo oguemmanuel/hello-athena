@@ -1,3 +1,5 @@
+import { printHtmlDocument } from './print';
+
 export type ReceiptItem = { name: string; price: number; quantity: number };
 export type ReceiptData = {
   receiptNumber: string;
@@ -47,8 +49,6 @@ export function printReceipt(sale: ReceiptData) {
     <div class="center bold" style="font-size:11px">Hello Athena!</div>
   `;
 
-  const win = window.open("", "_blank", "width=300,height=600");
-  if (!win) return;
-  win.document.write(`<html><head><title>Receipt${sale.voided ? ' (VOID)' : ''}</title><style>@page{margin:0;size:58mm auto}*{box-sizing:border-box}body{font-family:monospace;font-size:11px;width:54mm;margin:0;padding:4px;color:#000;background:#fff}.center{text-align:center}.bold{font-weight:bold}.divider{border-top:1px dashed #000;margin:4px 0}.row{display:flex;justify-content:space-between;margin:2px 0}</style></head><body onload="window.print();window.close();">${content}</body></html>`);
-  win.document.close();
+  const styles = `@page{margin:0;size:58mm auto}*{box-sizing:border-box}body{font-family:monospace;font-size:11px;width:54mm;margin:0;padding:4px;color:#000;background:#fff}.center{text-align:center}.bold{font-weight:bold}.divider{border-top:1px dashed #000;margin:4px 0}.row{display:flex;justify-content:space-between;margin:2px 0}`;
+  printHtmlDocument(`Receipt${sale.voided ? ' (VOID)' : ''}`, styles, content);
 }

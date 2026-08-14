@@ -1,10 +1,12 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { printMonthlyReport } from '@/lib/report-print'
 
 type Report = {
   month: number; year: number; totalRevenue: number;
   totalTransactions: number; totalItemsSold: number;
   topProducts: { name: string; code?: string; quantity: number; revenue: number }[]
+  sales: { receiptNumber: string; createdAt: string; items: { quantity: number; price: number; product: { name: string; code?: string | null } }[] }[]
 }
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
@@ -35,6 +37,14 @@ export default function ReportsPage() {
           <select className="input-field" style={{ width: 'auto' }} value={year} onChange={e => setYear(Number(e.target.value))}>
             {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
+          <button
+            className="btn-gold"
+            disabled={!report}
+            onClick={() => report && printMonthlyReport(report, MONTHS[month - 1], year)}
+            style={{ padding: '0 16px' }}
+          >
+            🖨 Print Report
+          </button>
         </div>
       </div>
 
