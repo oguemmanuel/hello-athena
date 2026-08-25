@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
-import { getDiscountPercent, getDiscountedPrice } from "@/lib/discount";
+import { applyDiscount } from "@/lib/discount";
 import { printHtmlDocument } from "@/lib/print";
 
 type Product = { id: number; name: string; category: string; price: number; stock: number; size?: string; code?: string };
 type CartItem = Product & { quantity: number; unitPrice: number; discountPercent: number };
+
+const DISCOUNT_OPTIONS = [0, 20, 30, 50];
 
 export default function POSPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -17,6 +19,7 @@ export default function POSPage() {
   const [outOfStockProduct, setOutOfStockProduct] = useState<Product | null>(null);
   const [adminPassword, setAdminPassword] = useState("");
   const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [discountPickerProduct, setDiscountPickerProduct] = useState<Product | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,19 +32,22 @@ export default function POSPage() {
     (p.code && p.code.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const addToCart = (product: Product) => {
+  const handleProductClick = (product: Product) => {
     if (product.stock === 0) { setOutOfStockProduct(product); return; }
-    setCart(prev => {
-      const existing = prev.find(i => i.id === product.id);
-      if (existing) {
-        if (existing.quantity >= product.stock) return prev;
-        return prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
-      }
-      const discountPercent = getDiscountPercent(product.category, product.code);
-      const unitPrice = getDiscountedPrice(product.price, discountPercent);
-      return [...prev, { ...product, quantity: 1, unitPrice, discountPercent }];
-    });
-    toast.success(`${product.name} added`, { duration: 1500 });
+    const existing = cart.find(i => i.id === product.id);
+    if (existing) {
+      if (existing.quantity >= product.stock) return;
+      setCart(prev => prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i));
+      return;
+    }
+    setDiscountPickerProduct(product);
+  };
+
+  const addToCart = (product: Product, discountPercent: number) => {
+    const unitPrice = applyDiscount(product.price, discountPercent);
+    setCart(prev => [...prev, { ...product, quantity: 1, unitPrice, discountPercent }]);
+    toast.success(`${product.name} added${discountPercent > 0 ? ` (-${discountPercent}%)` : ''}`, { duration: 1500 });
+    setDiscountPickerProduct(null);
   };
 
   const updateQty = (id: number, qty: number) => {
@@ -139,13 +145,10 @@ export default function POSPage() {
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: 10 }}>
-          {filtered.map(p => {
-            const discountPercent = getDiscountPercent(p.category, p.code);
-            const discountedPrice = getDiscountedPrice(p.price, discountPercent);
-            return (
+          {filtered.map(p => (
             <div
               key={p.id}
-              onClick={() => addToCart(p)}
+              onClick={() => handleProductClick(p)}
               style={{
                 backgroundColor: '#141414',
                 border: `1px solid ${p.stock === 0 ? '#2A1A1A' : '#222'}`,
@@ -177,16 +180,10 @@ export default function POSPage() {
                   fontSize: 10, color: '#C9A84C', textTransform: 'uppercase',
                   letterSpacing: 0.8, fontWeight: 600, opacity: 0.8,
                 }}>{p.category}</span>
-                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                  {discountPercent > 0 && <span style={{
-                    fontSize: 10, color: '#000', fontWeight: 700,
-                    backgroundColor: '#4ade80', padding: '1px 6px', borderRadius: 4,
-                  }}>-{discountPercent}%</span>}
-                  {p.code && <span style={{
-                    fontSize: 10, color: '#888', fontFamily: 'monospace',
-                    backgroundColor: '#1E1E1E', padding: '1px 6px', borderRadius: 4,
-                  }}>{p.code}</span>}
-                </div>
+                {p.code && <span style={{
+                  fontSize: 10, color: '#888', fontFamily: 'monospace',
+                  backgroundColor: '#1E1E1E', padding: '1px 6px', borderRadius: 4,
+                }}>{p.code}</span>}
               </div>
 
               {/* Name */}
@@ -197,14 +194,7 @@ export default function POSPage() {
 
               {/* Price + Stock */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                {discountPercent > 0 ? (
-                  <span>
-                    <span style={{ color: '#666', fontSize: 11, textDecoration: 'line-through', marginRight: 5 }}>GHS {p.price.toFixed(2)}</span>
-                    <span style={{ color: '#4ade80', fontWeight: 700, fontSize: 14 }}>GHS {discountedPrice.toFixed(2)}</span>
-                  </span>
-                ) : (
-                  <span style={{ color: '#C9A84C', fontWeight: 700, fontSize: 14 }}>GHS {p.price.toFixed(2)}</span>
-                )}
+                <span style={{ color: '#C9A84C', fontWeight: 700, fontSize: 14 }}>GHS {p.price.toFixed(2)}</span>
                 <span style={{
                   fontSize: 10, padding: '2px 7px', borderRadius: 20, fontWeight: 600,
                   backgroundColor: p.stock === 0 ? '#7f1d1d33' : p.stock <= 5 ? '#78350f33' : '#14532d22',
@@ -214,8 +204,7 @@ export default function POSPage() {
                 </span>
               </div>
             </div>
-            );
-          })}
+          ))}
           {filtered.length === 0 && (
             <div style={{ gridColumn: '1/-1', padding: '48px 0', textAlign: 'center', color: '#444', fontSize: 14 }}>
               No products found for "{search}"
@@ -324,6 +313,38 @@ export default function POSPage() {
           </button>
         </div>
       </div>
+
+      {/* Discount Picker Modal */}
+      {discountPickerProduct && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: '#000000cc', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }} onClick={() => setDiscountPickerProduct(null)}>
+          <div style={{ backgroundColor: '#161616', border: '1px solid #C9A84C33', borderRadius: 14, padding: 28, width: 360 }} onClick={e => e.stopPropagation()}>
+            <h2 style={{ color: '#E8C96A', marginTop: 0, marginBottom: 4, fontSize: 18 }}>{discountPickerProduct.name}</h2>
+            <p style={{ color: '#666', marginBottom: 20, fontSize: 13 }}>Normal price: GHS {discountPickerProduct.price.toFixed(2)} — pick a discount to apply, or none.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {DISCOUNT_OPTIONS.map(pct => (
+                <button
+                  key={pct}
+                  onClick={() => addToCart(discountPickerProduct, pct)}
+                  className={pct === 0 ? undefined : "btn-gold"}
+                  style={pct === 0 ? {
+                    padding: '10px', backgroundColor: '#1E1E1E', border: '1px solid #2A2A2A',
+                    color: '#aaa', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', fontSize: 13,
+                  } : { padding: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  {pct === 0 ? (
+                    'No discount'
+                  ) : (
+                    <>
+                      <span>-{pct}% off</span>
+                      <span>GHS {applyDiscount(discountPickerProduct.price, pct).toFixed(2)}</span>
+                    </>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Out of Stock Modal */}
       {outOfStockProduct && (
