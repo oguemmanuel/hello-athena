@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
+import { getDiscountPercent, getDiscountedPrice } from "@/lib/discount";
+import { printHtmlDocument } from "@/lib/print";
 
 type Product = { id: number; name: string; category: string; price: number; stock: number; size?: string; code?: string };
-type CartItem = Product & { quantity: number };
+type CartItem = Product & { quantity: number; unitPrice: number; discountPercent: number };
 
 export default function POSPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -35,7 +37,9 @@ export default function POSPage() {
         if (existing.quantity >= product.stock) return prev;
         return prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
       }
-      return [...prev, { ...product, quantity: 1 }];
+      const discountPercent = getDiscountPercent(product.category, product.code);
+      const unitPrice = getDiscountedPrice(product.price, discountPercent);
+      return [...prev, { ...product, quantity: 1, unitPrice, discountPercent }];
     });
     toast.success(`${product.name} added`, { duration: 1500 });
   };
@@ -48,7 +52,7 @@ export default function POSPage() {
   };
 
   const removeFromCart = (id: number) => setCart(prev => prev.filter(i => i.id !== id));
-  const total = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const total = cart.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
@@ -57,7 +61,10 @@ export default function POSPage() {
       const res = await fetch("/api/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: cart.map(i => ({ productId: i.id, quantity: i.quantity, price: i.price })), paymentMethod }),
+        body: JSON.stringify({
+          items: cart.map(i => ({ productId: i.id, quantity: i.quantity, price: i.unitPrice, originalPrice: i.price, discountPercent: i.discountPercent })),
+          paymentMethod,
+        }),
       });
       const sale = await res.json();
       if (sale.error) { toast.error(sale.error); setLoading(false); return; }
@@ -82,10 +89,8 @@ export default function POSPage() {
   const handlePrint = () => {
     if (!receiptRef.current) return;
     const content = receiptRef.current.innerHTML;
-    const win = window.open("", "_blank", "width=300,height=600");
-    if (!win) return;
-    win.document.write(`<html><head><title>Receipt</title><style>@page{margin:0;size:58mm auto}*{box-sizing:border-box}body{font-family:monospace;font-size:11px;width:54mm;margin:0;padding:4px;color:#000;background:#fff}.center{text-align:center}.bold{font-weight:bold}.divider{border-top:1px dashed #000;margin:4px 0}.row{display:flex;justify-content:space-between;margin:2px 0}</style></head><body onload="window.print();window.close();">${content}</body></html>`);
-    win.document.close();
+    const styles = `@page{margin:0;size:58mm auto}*{box-sizing:border-box}body{font-family:monospace;font-size:11px;width:54mm;margin:0;padding:4px;color:#000;background:#fff}.center{text-align:center}.bold{font-weight:bold}.divider{border-top:1px dashed #000;margin:4px 0}.row{display:flex;justify-content:space-between;margin:2px 0}`;
+    printHtmlDocument("Receipt", styles, content);
   };
 
   const paymentOptions = [
@@ -134,7 +139,10 @@ export default function POSPage() {
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: 10 }}>
-          {filtered.map(p => (
+          {filtered.map(p => {
+            const discountPercent = getDiscountPercent(p.category, p.code);
+            const discountedPrice = getDiscountedPrice(p.price, discountPercent);
+            return (
             <div
               key={p.id}
               onClick={() => addToCart(p)}
@@ -169,10 +177,16 @@ export default function POSPage() {
                   fontSize: 10, color: '#C9A84C', textTransform: 'uppercase',
                   letterSpacing: 0.8, fontWeight: 600, opacity: 0.8,
                 }}>{p.category}</span>
-                {p.code && <span style={{
-                  fontSize: 10, color: '#888', fontFamily: 'monospace',
-                  backgroundColor: '#1E1E1E', padding: '1px 6px', borderRadius: 4,
-                }}>{p.code}</span>}
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                  {discountPercent > 0 && <span style={{
+                    fontSize: 10, color: '#000', fontWeight: 700,
+                    backgroundColor: '#4ade80', padding: '1px 6px', borderRadius: 4,
+                  }}>-{discountPercent}%</span>}
+                  {p.code && <span style={{
+                    fontSize: 10, color: '#888', fontFamily: 'monospace',
+                    backgroundColor: '#1E1E1E', padding: '1px 6px', borderRadius: 4,
+                  }}>{p.code}</span>}
+                </div>
               </div>
 
               {/* Name */}
@@ -183,7 +197,14 @@ export default function POSPage() {
 
               {/* Price + Stock */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                <span style={{ color: '#C9A84C', fontWeight: 700, fontSize: 14 }}>GHS {p.price.toFixed(2)}</span>
+                {discountPercent > 0 ? (
+                  <span>
+                    <span style={{ color: '#666', fontSize: 11, textDecoration: 'line-through', marginRight: 5 }}>GHS {p.price.toFixed(2)}</span>
+                    <span style={{ color: '#4ade80', fontWeight: 700, fontSize: 14 }}>GHS {discountedPrice.toFixed(2)}</span>
+                  </span>
+                ) : (
+                  <span style={{ color: '#C9A84C', fontWeight: 700, fontSize: 14 }}>GHS {p.price.toFixed(2)}</span>
+                )}
                 <span style={{
                   fontSize: 10, padding: '2px 7px', borderRadius: 20, fontWeight: 600,
                   backgroundColor: p.stock === 0 ? '#7f1d1d33' : p.stock <= 5 ? '#78350f33' : '#14532d22',
@@ -193,7 +214,8 @@ export default function POSPage() {
                 </span>
               </div>
             </div>
-          ))}
+            );
+          })}
           {filtered.length === 0 && (
             <div style={{ gridColumn: '1/-1', padding: '48px 0', textAlign: 'center', color: '#444', fontSize: 14 }}>
               No products found for "{search}"
@@ -235,7 +257,14 @@ export default function POSPage() {
             }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 500, color: '#D0D0D0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>
-                <div style={{ fontSize: 11, color: '#C9A84C', marginTop: 1 }}>GHS {item.price.toFixed(2)}</div>
+                {item.discountPercent > 0 ? (
+                  <div style={{ fontSize: 11, marginTop: 1 }}>
+                    <span style={{ color: '#666', textDecoration: 'line-through', marginRight: 5 }}>GHS {item.price.toFixed(2)}</span>
+                    <span style={{ color: '#4ade80' }}>GHS {item.unitPrice.toFixed(2)} (-{item.discountPercent}%)</span>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 11, color: '#C9A84C', marginTop: 1 }}>GHS {item.unitPrice.toFixed(2)}</div>
+                )}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                 <button onClick={() => updateQty(item.id, item.quantity - 1)} style={{
@@ -249,7 +278,7 @@ export default function POSPage() {
                 }}>+</button>
               </div>
               <div style={{ minWidth: 64, textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#E0E0E0', flexShrink: 0 }}>
-                GHS {(item.price * item.quantity).toFixed(2)}
+                GHS {(item.unitPrice * item.quantity).toFixed(2)}
               </div>
               <button onClick={() => removeFromCart(item.id)} style={{
                 background: 'none', border: 'none', color: '#3A3A3A', cursor: 'pointer',
@@ -329,9 +358,12 @@ export default function POSPage() {
               {lastSale.items.map((item, i) => (
                 <div key={i} style={{ marginBottom: 4 }}>
                   <div style={{ fontWeight: 600, fontSize: 11 }}>{item.name}</div>
+                  {item.discountPercent > 0 && (
+                    <div style={{ fontSize: 9 }}>Was GHS {item.price.toFixed(2)} (-{item.discountPercent}%)</div>
+                  )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
-                    <span>{item.quantity} x GHS {item.price.toFixed(2)}</span>
-                    <span>GHS {(item.quantity * item.price).toFixed(2)}</span>
+                    <span>{item.quantity} x GHS {item.unitPrice.toFixed(2)}</span>
+                    <span>GHS {(item.quantity * item.unitPrice).toFixed(2)}</span>
                   </div>
                 </div>
               ))}

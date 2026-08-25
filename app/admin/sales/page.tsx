@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { printReceipt } from "@/lib/receipt";
 
-type SaleItem = { quantity: number; price: number; product: { code: any; name: string } };
+type SaleItem = { quantity: number; price: number; originalPrice: number | null; discountPercent: number | null; product: { code: any; name: string } };
 type Sale = {
   id: number; receiptNumber: string; total: number; paymentMethod: string; createdAt: string;
   voided: boolean; voidedAt: string | null; voidReason: string | null;
@@ -51,7 +51,7 @@ export default function SalesPage() {
       paymentMethod: sale.paymentMethod,
       createdAt: sale.createdAt,
       voided: sale.voided,
-      items: sale.items.map(i => ({ name: i.product.name, price: i.price, quantity: i.quantity })),
+      items: sale.items.map(i => ({ name: i.product.name, price: i.price, quantity: i.quantity, originalPrice: i.originalPrice, discountPercent: i.discountPercent })),
     });
   };
 

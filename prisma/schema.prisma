@@ -34,11 +34,13 @@ model Sale {
 }
 
 model SaleItem {
-  id        Int     @id @default(autoincrement())
-  saleId    Int
-  productId Int
-  quantity  Int
-  price     Float
-  sale      Sale    @relation(fields: [saleId], references: [id])
-  product   Product @relation(fields: [productId], references: [id])
+  id              Int     @id @default(autoincrement())
+  saleId          Int
+  productId       Int
+  quantity        Int
+  price           Float
+  originalPrice   Float?
+  discountPercent Float?
+  sale            Sale    @relation(fields: [saleId], references: [id])
+  product         Product @relation(fields: [productId], references: [id])
 }

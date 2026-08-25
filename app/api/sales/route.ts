@@ -45,10 +45,12 @@ export async function POST(request: NextRequest) {
           total,
           paymentMethod: body.paymentMethod || 'cash',
           items: {
-            create: body.items.map((item: { productId: number; quantity: number; price: number }) => ({
+            create: body.items.map((item: { productId: number; quantity: number; price: number; originalPrice?: number; discountPercent?: number }) => ({
               productId: item.productId,
               quantity: item.quantity,
               price: item.price,
+              originalPrice: item.originalPrice ?? item.price,
+              discountPercent: item.discountPercent ?? 0,
             }))
           }
         },

@@ -5,6 +5,8 @@ import { printReceipt } from "@/lib/receipt";
 type SaleItem = {
   quantity: number;
   price: number;
+  originalPrice: number | null;
+  discountPercent: number | null;
   product: { name: string; code?: string };
 };
 type Sale = {
@@ -67,7 +69,7 @@ export default function TransactionsPage() {
       paymentMethod: sale.paymentMethod,
       createdAt: sale.createdAt,
       voided: sale.voided,
-      items: sale.items.map(i => ({ name: i.product.name, price: i.price, quantity: i.quantity })),
+      items: sale.items.map(i => ({ name: i.product.name, price: i.price, quantity: i.quantity, originalPrice: i.originalPrice, discountPercent: i.discountPercent })),
     });
   };
 

@@ -1,6 +1,6 @@
 import { printHtmlDocument } from './print';
 
-export type ReceiptItem = { name: string; price: number; quantity: number };
+export type ReceiptItem = { name: string; price: number; quantity: number; originalPrice?: number | null; discountPercent?: number | null };
 export type ReceiptData = {
   receiptNumber: string;
   total: number;
@@ -20,6 +20,7 @@ export function printReceipt(sale: ReceiptData) {
   const itemsHtml = sale.items.map(item => `
     <div style="margin-bottom:4px">
       <div style="font-weight:600;font-size:11px">${escapeHtml(item.name)}</div>
+      ${item.discountPercent ? `<div style="font-size:9px">Was GHS ${(item.originalPrice ?? item.price).toFixed(2)} (-${item.discountPercent}%)</div>` : ''}
       <div class="row" style="font-size:10px">
         <span>${item.quantity} x GHS ${item.price.toFixed(2)}</span>
         <span>GHS ${(item.quantity * item.price).toFixed(2)}</span>
