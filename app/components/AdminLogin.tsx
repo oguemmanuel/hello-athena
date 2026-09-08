@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 
-const ADMIN_PASSWORD = 'REDACTED'
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD
 
 export default function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
   const [password, setPassword] = useState('')

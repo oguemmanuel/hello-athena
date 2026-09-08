@@ -8,6 +8,7 @@ type Product = { id: number; name: string; category: string; price: number; stoc
 type CartItem = Product & { quantity: number; unitPrice: number; discountPercent: number };
 
 const DISCOUNT_OPTIONS = [0, 20, 30, 50];
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
 
 export default function POSPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -83,7 +84,7 @@ export default function POSPage() {
   };
 
   const handleAdminLogin = () => {
-    if (adminPassword === "REDACTED") {
+    if (adminPassword === ADMIN_PASSWORD) {
       localStorage.setItem("adminAuth", "true");
       window.location.href = "/admin";
     } else {
