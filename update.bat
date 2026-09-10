@@ -44,6 +44,14 @@ if %errorlevel% neq 0 (
 )
 
 echo.
+if not exist ".env.local" (
+  echo WARNING: .env.local not found - admin login will not work.
+  echo Run "set-password.bat" to set the admin password, then run this again.
+  pause
+  exit /b 1
+)
+
+echo.
 echo [4/5] Rebuilding app...
 set NODE_OPTIONS=--max-old-space-size=4096
 call npm run build
